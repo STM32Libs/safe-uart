@@ -1,5 +1,6 @@
 
 #include "suart.h"
+#include "crc.h"
 
 void suart::uart_ticker()
 {
@@ -23,14 +24,6 @@ void suart::uart_ticker()
         is_getting_late = 1;
         //timeout = 1;
     }
-    if(update)
-    {
-        uint8_t c1,c2;
-        c1 = val / 256;
-        c2 = val % 256;
-        ser->printf("Servo %d at 0x%02x %02x\n",s_id,c1,c2);
-        update = 0;
-    }
 }
 
 
@@ -48,7 +41,14 @@ void suart::uart_callback()
         }
         else if(bufi == ud_size+1)//size + 2x CRC
         {
-            message_received(ubuf);
+            if(crc::check(ubuf))
+            {
+                message_received(ubuf);
+            }
+            else
+            {
+                ser->printf("UART> CRC Error\n");
+            }
             bufi = 0;
         }
         else
@@ -72,7 +72,6 @@ suart::suart(Serial *ps):
     bufi = 0;
     ud_size = 0;
     is_getting_late = 0;
-    update = 0;
     ser->attach(callback(this,&suart::uart_callback));
     tick.attach(callback(this,&suart::uart_ticker),0.1);
 }
