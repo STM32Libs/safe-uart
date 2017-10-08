@@ -10,7 +10,7 @@ class suart
         suart(Serial *ps);
         void uart_ticker();
         void uart_callback();
-        void attach(Callback<void(uint8_t *data)> func);
+        void attach(Callback<void(uint8_t *data,uint8_t size)> func);
     public:
         Serial      *ser;
         Ticker      tick;
@@ -21,7 +21,7 @@ class suart
         uint8_t update;
         uint8_t s_id;
         int16_t val;
-        Callback<void(uint8_t *data)> message_received;
+        Callback<void(uint8_t *data,uint8_t size)> message_received;
         
 };
 

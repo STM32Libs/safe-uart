@@ -8,13 +8,15 @@ void suart::uart_ticker()
     {
         if(bufi != 0)
         {
-            ser->printf("UART reset counter got (%d)\n",bufi);
+            /*ser->printf("UART reset counter got (%d)\n",bufi);
             ser->printf("0x");
             for(int i=0;i<bufi;i++)
             {
                 ser->printf(" %02x",ubuf[i]);
             }
             ser->printf("\n");
+            */
+            message_received(ubuf,bufi);
             bufi = 0;
             //timeout = 0;
         }
@@ -43,7 +45,7 @@ void suart::uart_callback()
         {
             if(crc::check(ubuf))
             {
-                message_received(ubuf);
+                message_received(ubuf,bufi);
             }
             else
             {
@@ -76,7 +78,7 @@ suart::suart(Serial *ps):
     tick.attach(callback(this,&suart::uart_ticker),0.1);
 }
 
-void suart::attach(Callback<void(uint8_t *data)> func)
+void suart::attach(Callback<void(uint8_t *data,uint8_t size)> func)
 {
     message_received = func;
 }
