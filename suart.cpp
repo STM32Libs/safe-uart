@@ -33,7 +33,7 @@ void suart::uart_callback()
 {
     //Uart_Int = 1;
     char c = ser->getc();
-    if(bufi < 32)
+    if(bufi < sizeof(ubuf))
     {
         ubuf[bufi] = c;
         if(bufi == 0)
@@ -60,7 +60,7 @@ void suart::uart_callback()
     }
     else//ovewrite last char
     {
-        bufi = 0;
+        bufi = sizeof(ubuf)-1;
     }
     is_getting_late = 0;
     //timeout = 0;

@@ -14,7 +14,7 @@ class suart
     public:
         Serial      *ser;
         Ticker      tick;
-        uint8_t ubuf[32];
+        uint8_t ubuf[128];
         uint8_t bufi;
         uint8_t ud_size;
         uint8_t is_getting_late;
