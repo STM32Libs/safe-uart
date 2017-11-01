@@ -2,33 +2,27 @@
 #include "suart.h"
 #include "crc.h"
 
+static void suart_donothing(uint8_t *data,uint8_t size) {};
+
 void suart::uart_ticker()
 {
     if(is_getting_late)
     {
         if(bufi != 0)
         {
-            /*ser->printf("UART reset counter got (%d)\n",bufi);
-            ser->printf("0x");
-            for(int i=0;i<bufi;i++)
-            {
-                ser->printf(" %02x",ubuf[i]);
-            }
-            ser->printf("\n");
-            */
-            message_received(ubuf,bufi);
+            txt_message_received(ubuf+1,bufi-1);//remove first char to widen second char options to all characters
             bufi = 0;
-            //timeout = 0;
         }
     }
     else
     {
         is_getting_late = 1;
-        //timeout = 1;
     }
 }
 
 
+// msg_type , size , data , crc
+//            ----------->
 void suart::uart_callback() 
 {
     //Uart_Int = 1;
@@ -36,22 +30,45 @@ void suart::uart_callback()
     if(bufi < sizeof(ubuf))
     {
         ubuf[bufi] = c;
-        if(bufi == 0)
+        if(bufi == 0)       //message type : 'b' binary, 'c' binary with CRC, others : text
         {
-            ud_size = ubuf[0];
+            msg_type = c;
             bufi++;
         }
-        else if(bufi == ud_size+1)//size + 2x CRC
+        else if(bufi == 1) //message size depending on type
         {
-            if(crc::check(ubuf))
+            if((msg_type == 'b') | (msg_type == 'c'))
             {
-                message_received(ubuf,bufi);
+                ud_size = c;
             }
             else
             {
-                ser->printf("UART> CRC Error\n");
+                ud_size = 255;//unknown, stops with timeout
             }
-            bufi = 0;
+            bufi++;
+        }
+        else if(bufi == ud_size)
+        {
+            if(msg_type == 'b')
+            {
+                bin_message_received(ubuf+1,bufi-1);//remove message type identifier
+                bufi = 0;
+            }
+        }
+        else if(bufi == ud_size+2)
+        {
+            if(msg_type == 'c')
+            {
+                if(crc::check(ubuf+1))
+                {
+                    bin_message_received(ubuf+1,bufi-1);//remove message type identifier
+                }
+                else
+                {
+                    ser->printf("UART> CRC Error\n");
+                }
+                bufi = 0;
+            }
         }
         else
         {
@@ -63,9 +80,6 @@ void suart::uart_callback()
         bufi = sizeof(ubuf)-1;
     }
     is_getting_late = 0;
-    //timeout = 0;
-
-    //Uart_Int = 0;
 }
 
 suart::suart(Serial *ps):
@@ -74,11 +88,19 @@ suart::suart(Serial *ps):
     bufi = 0;
     ud_size = 0;
     is_getting_late = 0;
+    msg_type = 't';
+    txt_message_received = suart_donothing;
+    bin_message_received = suart_donothing;
     ser->attach(callback(this,&suart::uart_callback));
     tick.attach(callback(this,&suart::uart_ticker),0.1);
 }
 
-void suart::attach(Callback<void(uint8_t *data,uint8_t size)> func)
+void suart::attach_txt(Callback<void(uint8_t *data,uint8_t size)> func)
 {
-    message_received = func;
+    txt_message_received = func;
+}
+
+void suart::attach_bin(Callback<void(uint8_t *data,uint8_t size)> func)
+{
+    bin_message_received = func;
 }
